@@ -36,13 +36,16 @@ contract tokenSlabDeposit {
         require(size > 0,"Deployer: Address is not an contract");
         maxSlab = _maxSlab;
         tokenAccepted = ERC20(_tokenAccepted);
-        // require(tokenAccepted.decimals(), "Deployer: Address is not an ERC20 token");
+        //require(tokenAccepted.decimals(), "Deployer: Address is not an ERC20 token");
     }
 
     modifier reentrancy() {
         require(!inProgress,"Reentrancy: already in progress");
         _;
     }
+
+    event deposit(address _depositer, uint256 _amount, uint8 _slabNo);
+    event slabChange(uint8 _newSlabNo);
 
     /**
       * @dev deposit Token  
@@ -53,7 +56,7 @@ contract tokenSlabDeposit {
       *    allowance from sender to this contract to transfer token
       */
     function depositToken(uint256 tokenAmount) external reentrancy returns(bool){
-        require(tokenAccepted.allowance(msg.sender,address(this)) >= tokenAmount,"depositToken: please approve contract to transfer token ");
+        require(tokenAccepted.allowance(msg.sender,address(this)) >= tokenAmount,"depositToken: please approve contract to transfer token");
         
         uint8 _currentSlab = currentSlab; // gas saving, by not calling global variable again and again.
 
@@ -81,6 +84,8 @@ contract tokenSlabDeposit {
 
         // updating slab data
         specificSlabInfo[currentSlab].balanceTokenSpace += tokenToAdd;
+
+        emit deposit(msg.sender, tokenAmount,_currentSlab);
 
         return true;
     }
@@ -133,7 +138,8 @@ contract tokenSlabDeposit {
       * @param slabNo current slab no
       */
     function initialize(uint8 slabNo) private {
-        uint8 tokenCapacity = (slabNo + 1) * 100; // logic for calculating capacity
+        uint8 decimals = tokenAccepted.decimals();
+        uint256 tokenCapacity = (slabNo + 1) * 100 * 10 ** decimals ; // logic for calculating capacity
         specificSlabInfo[slabNo].slabTokenSpace = tokenCapacity;
     }
 
@@ -142,5 +148,6 @@ contract tokenSlabDeposit {
       */
     function changeSlab() private {
         currentSlab = currentSlab + 1;
+        emit slabChange(currentSlab);
     }
 }
